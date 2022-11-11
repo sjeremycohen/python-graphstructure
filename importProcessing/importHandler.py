@@ -1,7 +1,13 @@
 import ast
-from collections import namedtuple
 
-Import = namedtuple("Import",["module", "name", "alias"])
+
+class Import():
+    def __init__(self, module, name, alias, path):
+        self.module = module
+        self.name = name
+        self.alias = alias
+        self.path = path
+
 
 def get_imports(path):
     with open(path) as fh:
