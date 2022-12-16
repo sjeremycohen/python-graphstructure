@@ -1,11 +1,32 @@
 import os
+import sys
+import fnmatch
 from neo4j import GraphDatabase
+from dotenv import load_dotenv
+
+
+
+# Import env vars
+load_dotenv()
+env = os.environ
 
 # Create a Neo4j driver to connect to the database
-driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
+n4js = os.environ.get('NEO4J_SERVER')
+n4jdb = os.environ.get('NEO4J_DB')
+n4jpw = os.environ.get('NEO4J_PW')
+
+driver = GraphDatabase.driver(n4js, auth=(n4jdb, n4jpw))
+
+# Clear the current neo4j graph
+with driver.session() as session:
+    session.run("MATCH (n) DETACH DELETE n")
 
 # Specify the directory to search
-root_dir = "/path/to/directory"
+root_dir = sys.argv[1]
+
+# Read the .gitignore file and extract the patterns
+with open('.gitignore', 'r') as f:
+    patterns = f.readlines()
 
 # Create a dictionary to store the node ID of each directory
 dir_nodes = {}
@@ -17,7 +38,9 @@ for root, dirs, files in os.walk(root_dir):
         # Get the directory name and parent directory path
         dir_name = os.path.basename(root)
         parent_path = os.path.dirname(root)
-
+        if any(fnmatch.fnmatch(dir_name, pattern) for pattern in patterns):
+            print("gitignore match: " + dir_name)
+            continue
         # Create a query to create the directory node
         query = """
             CREATE (d:Directory {{name: '{}'}})
@@ -37,6 +60,9 @@ for root, dirs, files in os.walk(root_dir):
 
     # Loop through all files in the current directory
     for file in files:
+        if any(fnmatch.fnmatch(file, pattern) for pattern in patterns):
+            print("gitignore match: " + file)
+            continue
         # Create a Neo4j session
         with driver.session() as session:
             # Create a query to create the file node
