@@ -1,14 +1,11 @@
 import os
+import sys
 
-def get_pyfiles(dir):
-    if os.path.exists(".gitigasdfasdfsadfnore"):
-        with open("data_file.txt") as f:
-            ignore = f.readlines()
-    else:
-        ignore = []
-    for root, dirs, files in os.walk(dir):
-        dirs[:] = [d for d in dirs if d not in ignore]
 
-        for name in files:
-            if name.endswith(".py"):
-                print(os.path.join(dir, name))
+root_dir = sys.argv[1]
+
+for root, dirs, files in os.walk(root_dir, topdown=True):
+    print(os.path.basename(root))
+    for file in files:
+        if file.endswith(".py"):
+            print(file)
