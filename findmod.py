@@ -6,7 +6,7 @@ from findpath import findpath
 def findmod(module_name, paths):
     module_name = module_name.replace(".py", "")
     for path in paths:
-        module_pathnames = [module_name.replace('.','/') + ".py", module_name.replace('.','/')]
+        module_pathnames = [module_name.replace('.', '/') + ".py", module_name.replace('.', '/')]
         for module_pathname in module_pathnames:
             module_path = os.path.join(path, module_pathname)
             if os.path.exists(module_path):

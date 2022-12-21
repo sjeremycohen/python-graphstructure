@@ -3,14 +3,24 @@ import sys
 import os
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
-from findmod import findmod
 from findpath import findpath
 
 
-def buildquery(imp, filename, filepath, syspaths, abs_path=None):
+def modfile(imp, name):
+    print(name)
+    try:
+        mod_path = imp.__file__
+    except AttributeError:
+        mod_path = name + " is part of the standard Python library"
+    print(mod_path)
+    return mod_path
+
+
+def buildquery(imp, filename, filepath, abs_path=None):
     if isinstance(imp, ast.ImportFrom):
         module = imp.module
-        mod_path = findmod(module, syspaths).replace("\\", "\\\\")
+        mod_path = modfile(imp, module)
+        #mod_path = findmod(module, syspaths).replace("\\", "\\\\")
         class_func = ", ".join([alias.name for alias in imp.names])
         print(abs_path + " - " + mod_path)
         if abs_path is not None and abs_path in mod_path and ("site-packages" not in mod_path):
@@ -28,7 +38,8 @@ def buildquery(imp, filename, filepath, syspaths, abs_path=None):
     else:
         for n in imp.names:
             module = n.name
-            mod_path = findmod(module, syspaths).replace("\\", "\\\\")
+            mod_path = modfile(imp, module)
+            #mod_path = findmod(module, syspaths).replace("\\", "\\\\")
             print(abs_path + " - " + mod_path)
             if abs_path is not None and abs_path in mod_path and ("site-packages" not in mod_path):
                 mod_type = "Module"
@@ -44,11 +55,10 @@ def buildquery(imp, filename, filepath, syspaths, abs_path=None):
     return query
 
 
-def graphimport(file, driver, syspaths, abs_path=None):
-    filename = os.path.basename(file).replace(".py", "")
-    filepath = findmod(filename, syspaths).replace("\\", "\\\\")
+def graphimport(filepath, driver, abs_path=None):
+    filename = os.path.basename(filepath).replace(".py", "")
     if "site-packages" not in filepath and (abs_path is None or abs_path in filepath):
-        with open(file, 'r') as f:
+        with open(filepath, 'r') as f:
             tree = ast.parse(f.read())
 
         # Extract the import and import from statements
@@ -57,7 +67,7 @@ def graphimport(file, driver, syspaths, abs_path=None):
             query = f"MERGE (m:Module {{name: '{filename}', path: '{filepath}'}}) RETURN m"
             session.run(query)
             for imp in imports:
-                query = buildquery(imp, filename, filepath, syspaths, abs_path)
+                query = buildquery(imp, filename, filepath, abs_path)
                 session.run(query)
     return
 

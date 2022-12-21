@@ -3,7 +3,6 @@ import sys
 from graphimport import graphimport
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
-from findpath import findpath
 
 
 def findpyfiles(root_dir):
@@ -20,7 +19,7 @@ def findpyfiles(root_dir):
 
 def graphpyproj(input):
     load_dotenv()
-    paths = findpath(sys.path)
+    #paths = findpath(sys.path)
 
     # Create a Neo4j driver to connect to the database
     n4js = os.environ.get('NEO4J_SERVER')
@@ -35,7 +34,7 @@ def graphpyproj(input):
     # If it's a file, just do the graphimport
     if ".py" in input:
         abs_path = os.getcwd().replace("\\", "\\\\")
-        graphimport(input, driver, paths, abs_path)
+        graphimport(input, driver, abs_path)
     # if it's a folder, find all the .py files and map all of them
     else:
         # Get the location of the input dir
@@ -45,7 +44,16 @@ def graphpyproj(input):
         abs_path = os.path.join(os.getcwd(), input).replace("\\", "\\\\")
         files = findpyfiles(input)
         for file in files:
-            graphimport(file.replace("\\\\", "\\"), driver, paths, abs_path)
+            filepath = file.replace("\\\\", "\\")
+            if "site-packages" not in filepath and (abs_path is None or abs_path in filepath):
+                # add files as individual nodes
+                filename = os.path.basename(filepath).replace(".py", "")
+                with driver.session() as session:
+                    query = f"MERGE (m:Module {{name: '{filename}', path: '{filepath}'}}) RETURN m"
+                    session.run(query)
+        for file in files:
+            filepath = file.replace("\\\\", "\\")
+            graphimport(filepath, driver, abs_path)
     return
 
 
