@@ -1,60 +1,52 @@
-import ast
-import sys
 import os
+import sys
+from graphimport import graphimport
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
-from findmod import findmod
+from findpath import findpath
 
+def findpyfiles(root_dir):
+    # Create a list to hold the file paths
+    py_files = []
 
+    # Iterate over the files in the directory tree
+    for dirpath, _, filenames in os.walk(root_dir):
+        # Add the file paths of any .py files to the list
+        py_files.extend([os.path.join(dirpath, f) for f in filenames if f.endswith('.py')])
 
-def findModule(module_name):
-    for path in sys.path:
-        full_path = os.path.join(path, module_name.replace('.','/'))
-        if os.path.exists(full_path):
-            return full_path
-    else:
-        return 1
+    return py_files
 
-
-def graphImports(file, driver):
-    filename = os.path.basename(file)
-    with open(file, 'r') as f:
-        tree = ast.parse(f.read())
-
-    # What if, as an alternative to grabbing filepath, we simply extract the module name from the import string and use that alone? Disadvantage: for Django projects, you can have models.py in multiple folders.
-
-    # Extract the import and import from statements
-    imports = [node for node in ast.iter_child_nodes(tree) if isinstance(node, (ast.Import, ast.ImportFrom))]
-    with driver.session() as session:
-        query = "MERGE (m:Module {{name: '{}'}}) RETURN m".format(filename)
-        session.run(query)
-        for i in imports:
-            if isinstance(i, ast.ImportFrom):
-                module = i.module
-                classes_or_functions = ", ".join([alias.name for alias in i.names])
-                query = """
-                    MERGE (m:Module {{name: '{}'}})
-                    MERGE (n:Module {{name: '{}'}})
-                    MERGE (m)-[:IMPORTS {{classes_or_functions: '{}'}}]->(n)
-                    """.format(filename, module, classes_or_functions)
-                session.run(query)
-            else:
-                for n in i.names:
-                    module = n.name
-                    query = """
-                        MERGE (m:Module {{name: '{}'}})
-                        MERGE (n:Module {{name: '{}'}})
-                        MERGE (m)-[:IMPORTS]->(n)
-                        """.format(filename, module)
-                    session.run(query)
-
-if __name__=="__main__":
-    file = sys.argv[1]
+def graphpyproj(input):
     load_dotenv()
+    paths = findpath(sys.path)
+    
+
+    # Create a Neo4j driver to connect to the database
     n4js = os.environ.get('NEO4J_SERVER')
     n4jdb = os.environ.get('NEO4J_DB')
     n4jpw = os.environ.get('NEO4J_PW')
+
     driver = GraphDatabase.driver(n4js, auth=(n4jdb, n4jpw))
+
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
-    graphImports(file, driver)
+
+    # If it's a file, just do the graphimport
+    if "." in input:
+        abs_path = os.getcwd().replace("\\","\\\\")
+        graphimport(input, driver, paths, abs_path)
+    # if it's a folder, find all the .py files and map all of them
+    else:
+        # Get the location of the input dir
+        abs_path = os.path.join(os.getcwd(), input).replace("\\","\\\\")
+        files = findpyfiles(input)
+        for file in files:
+            print(file)
+            graphimport(file.replace("\\\\","\\"), driver, paths, abs_path)
+    return
+
+if __name__=="__main__":
+    if len(sys.argv) != 2:
+        "Correct Usage: python pgs.py [file or directory to map]"
+    else:
+        graphpyproj(sys.argv[1])

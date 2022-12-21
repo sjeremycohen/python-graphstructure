@@ -4,11 +4,11 @@ from collections import deque
 
 
 # This program produces all the possible subdirectories that could contain modules given the current sys.path
-def find_paths():
+def findpath(paths=sys.path):
     dirs = deque()
 
     # queue sys.path
-    for path in sys.path:
+    for path in paths:
         dirs.append(path)
 
     # create set to hold the visited dirs
@@ -32,4 +32,4 @@ def find_paths():
     return packages
     
 if __name__=="__main__":
-    print(find_paths())
+    print(findpath())
