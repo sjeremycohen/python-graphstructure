@@ -27,3 +27,6 @@ Inspired by Kasper Müller (though all used code is written from scratch); origi
     ```
     python pgs.py [file or directory to map]
     ```
+
+## Known Limitations
+- Modules with the same name can be incorrectly linked. For example a Django project with multiple Django modules that each have their own models.py file
