@@ -3,16 +3,14 @@ import sys
 import os
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
-from findpath import findpath
 
 
 def modfile(imp, name):
-    print(name)
+    mod = __import__(name)
     try:
-        mod_path = imp.__file__
+        mod_path = mod.__file__
     except AttributeError:
         mod_path = name + " is part of the standard Python library"
-    print(mod_path)
     return mod_path
 
 
@@ -20,18 +18,14 @@ def buildquery(imp, filename, filepath, abs_path=None):
     if isinstance(imp, ast.ImportFrom):
         module = imp.module
         mod_path = modfile(imp, module)
-        #mod_path = findmod(module, syspaths).replace("\\", "\\\\")
         class_func = ", ".join([alias.name for alias in imp.names])
-        print(abs_path + " - " + mod_path)
-        if abs_path is not None and abs_path in mod_path and ("site-packages" not in mod_path):
-            mod_type = "Module"
-        else:
-            mod_type = "External_Module"
+
         query = f"""
             MERGE (m:Module {{name: '{filename}', path: '{filepath}'}})
-            MERGE (n:{mod_type} {{name: '{module}', path: '{mod_path}'}})
+            MERGE (n {{name: '{module}'}})
             ON CREATE
-                SET n.name='{module}'
+                SET n:External_Module,
+                n.path = '{mod_path}'
             MERGE (m)-[:IMPORTS {{classes_or_functions: '{class_func}'}}]->(n)
             """
 
@@ -39,17 +33,12 @@ def buildquery(imp, filename, filepath, abs_path=None):
         for n in imp.names:
             module = n.name
             mod_path = modfile(imp, module)
-            #mod_path = findmod(module, syspaths).replace("\\", "\\\\")
-            print(abs_path + " - " + mod_path)
-            if abs_path is not None and abs_path in mod_path and ("site-packages" not in mod_path):
-                mod_type = "Module"
-            else:
-                mod_type = "External_Module"
             query = f"""
             MERGE (m:Module {{name: '{filename}', path: '{filepath}'}})
-            MERGE (n:{mod_type} {{path: '{mod_path}'}})
+            MERGE (n {{name: '{module}'}})
             ON CREATE
-                SET n.name='{module}'
+                SET n:External_Module,
+                n.path = '{mod_path}'
             MERGE (m)-[:IMPORTS]->(n)
             """
     return query
@@ -79,6 +68,7 @@ if __name__ == "__main__":
     n4jdb = os.environ.get('NEO4J_DB')
     n4jpw = os.environ.get('NEO4J_PW')
     driver = GraphDatabase.driver(n4js, auth=(n4jdb, n4jpw))
+    abs_path = os.getcwd().replace("\\", "\\\\")
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
-    graphimport(file, driver, findpath(sys.path))
+    graphimport(file, driver, abs_path)
