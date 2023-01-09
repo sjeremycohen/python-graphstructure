@@ -5,19 +5,23 @@ from neo4j import GraphDatabase
 from dotenv import load_dotenv
 
 
-def modfile(imp, name):
-    mod = __import__(name)
+def modfile(name):
     try:
-        mod_path = mod.__file__
-    except AttributeError:
-        mod_path = name + " is part of the standard Python library"
+        mod = __import__(name)
+    except ModuleNotFoundError:
+        mod_path = "Filepath for " + name + " could not be found"
+    else:
+        try:
+            mod_path = mod.__file__
+        except AttributeError:
+            mod_path = name + " is part of the standard Python library"
     return mod_path
 
 
 def buildquery(imp, filename, filepath, abs_path=None):
     if isinstance(imp, ast.ImportFrom):
         module = imp.module
-        mod_path = modfile(imp, module)
+        mod_path = modfile(module)
         class_func = ", ".join([alias.name for alias in imp.names])
 
         query = f"""
@@ -32,7 +36,7 @@ def buildquery(imp, filename, filepath, abs_path=None):
     else:
         for n in imp.names:
             module = n.name
-            mod_path = modfile(imp, module)
+            mod_path = modfile(module)
             query = f"""
             MERGE (m:Module {{name: '{filename}', path: '{filepath}'}})
             MERGE (n {{name: '{module}'}})

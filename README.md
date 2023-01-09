@@ -1,7 +1,9 @@
 # python-graphstructure
 Graph the relationships between Python files within a project/directory.
 
-Inspired by Kasper Müller (though all used code is written from scratch); originally documented in [this medium post](https://towardsdatascience.com/building-a-map-of-your-python-project-using-graph-technology-visualize-your-code-6764e81f3500)
+![example image](static/pgs.png)
+
+Inspired by a similar project by Kasper Müller; originally documented in [this medium post](https://towardsdatascience.com/building-a-map-of-your-python-project-using-graph-technology-visualize-your-code-6764e81f3500). All code written from scratch.
 
 ## Requirements
 1. An active [Neo4J](https://neo4j.com/) server - (only tested on Local, but there's no reason this shouldn't work with Aura!)
